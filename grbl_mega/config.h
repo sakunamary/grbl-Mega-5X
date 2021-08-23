@@ -44,7 +44,7 @@
 #define BAUD_RATE 115200
 
 // Axis array index values. Must start with 0 and be continuous.
-#define N_AXIS 5            // Number of axes (3 to 6)
+#define N_AXIS 4            // Number of axes (3 to 6)
 #define N_AXIS_LINEAR 3     // Number of linears axis
 
 #define AXIS_1 0        // Axis indexing value. Must start with 0 and be continuous.
@@ -77,8 +77,8 @@
 // SPINDLE_PWM_ON_D8 => 0-12v 16 bits PWM on RAMPS D8
 // SPINDLE_PWM_ON_D6 => 0-5v 8bits PWM on RAMPS Servo 2 signal (Mega 2560 D6)
 // Uncomment the line which correspond to your hardware
-#define SPINDLE_PWM_ON_D8
-// #define SPINDLE_PWM_ON_D6
+//#define SPINDLE_PWM_ON_D8
+ #define SPINDLE_PWM_ON_D6
 
 // Renaming axis doesn't change their number. By default, the status report give axis values in
 // the order of their number. Some graphical interface are not able to affect axis values reported
@@ -514,7 +514,7 @@
 // can be too small and g-code blocks can get truncated. Officially, the g-code standards
 // support up to 256 characters. In future versions, this default will be increased, when
 // we know how much extra memory space we can re-invest into this.
-// #define LINE_BUFFER_SIZE 256  // Uncomment to override default in protocol.h
+ #define LINE_BUFFER_SIZE 256  // Uncomment to override default in protocol.h
 
 // Serial send and receive buffer size. The receive buffer is often used as another streaming
 // buffer to store incoming blocks to be processed by Grbl when its ready. Most streaming
