@@ -2,6 +2,7 @@
   report.c - reporting and messaging methods
   Part of Grbl
 
+  Copyright (c) 2017-2018 Gauthier Briere
   Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
 
   Grbl is free software: you can redistribute it and/or modify
@@ -36,12 +37,84 @@ static void report_util_feedback_line_feed() { serial_write(']'); report_util_li
 static void report_util_gcode_modes_G() { printPgmString(PSTR(" G")); }
 static void report_util_gcode_modes_M() { printPgmString(PSTR(" M")); }
 // static void report_util_comment_line_feed() { serial_write(')'); report_util_line_feed(); }
+
 static void report_util_axis_values(float *axis_value) {
-  uint8_t idx;
-  for (idx=0; idx<N_AXIS; idx++) {
-    printFloat_CoordValue(axis_value[idx]);
-    if (idx < (N_AXIS-1)) { serial_write(','); }
-  }
+
+  #ifdef SORT_REPORT_BY_AXIS_NAME
+    extern uint8_t n_axis_report; // Global nombre de nom d'axes différents
+  #endif
+
+  #ifdef SORT_REPORT_BY_AXIS_NAME
+    char axis_name_order[] = AXIS_NAME_SORT_ORDER;
+    int8_t n_report = 0;
+  #endif
+
+  // If this option is enabled, the sorting order will be X, Y, Z, U, V, W, A, B and C.
+  // defined by AXIS_NAME_SORT_ORDER
+  #ifdef SORT_REPORT_BY_AXIS_NAME
+    // Output axis_names in order of AXIS_NAME_SORT_ORDER et traiter REPORT_VALUE_FOR_AXIS_NAME_ONCE
+    for (int i=0; i<9; i++) {
+      if (AXIS_1_NAME == axis_name_order[i]) {
+        printFloat_CoordValue(axis_value[0]);
+        n_report++;
+        if (n_report < (n_axis_report)) { serial_write(','); }
+        #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+          axis_name_order[i] = '\0';
+        #endif
+      }
+      if (AXIS_2_NAME == axis_name_order[i]) {
+        printFloat_CoordValue(axis_value[1]);
+        n_report++;
+        if (n_report < (n_axis_report)) { serial_write(','); }
+        #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+          axis_name_order[i] = '\0';
+        #endif
+      }
+      if (AXIS_3_NAME == axis_name_order[i]) {
+        printFloat_CoordValue(axis_value[2]);
+        n_report++;
+        if (n_report < (n_axis_report)) { serial_write(','); }
+        #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+          axis_name_order[i] = '\0';
+        #endif
+      }
+      #if N_AXIS >3
+        if (AXIS_4_NAME == axis_name_order[i]) {
+          printFloat_CoordValue(axis_value[3]);
+          n_report++;
+          if (n_report < (n_axis_report)) { serial_write(','); }
+          #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+            axis_name_order[i] = '\0';
+          #endif
+        }
+      #endif
+      #if N_AXIS >4
+        if (AXIS_5_NAME == axis_name_order[i]) {
+          printFloat_CoordValue(axis_value[4]);
+          n_report++;
+          if (n_report < (n_axis_report)) { serial_write(','); }
+          #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+            axis_name_order[i] = '\0';
+          #endif
+        }
+      #endif
+      #if N_AXIS >5
+        if (AXIS_6_NAME == axis_name_order[i]) {
+          printFloat_CoordValue(axis_value[5]);
+          n_report++;
+          if (n_report < (n_axis_report)) { serial_write(','); }
+          #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+            axis_name_order[i] = '\0';
+          #endif
+        }
+      #endif
+    }
+  #else // #ifdef SORT_REPORT_BY_AXIS_NAME
+    for (uint8_t idx=0; idx<N_AXIS; idx++) {
+      printFloat_CoordValue(axis_value[idx]);
+      if (idx < (N_AXIS-1)) { serial_write(','); }
+    }
+  #endif
 }
 
 /*
@@ -50,7 +123,7 @@ static void report_util_setting_string(uint8_t n) {
   serial_write('(');
   switch(n) {
     case 0: printPgmString(PSTR("stp pulse")); break;
-    case 1: printPgmString(PSTR("idl delay")); break; 
+    case 1: printPgmString(PSTR("idl delay")); break;
     case 2: printPgmString(PSTR("stp inv")); break;
     case 3: printPgmString(PSTR("dir inv")); break;
     case 4: printPgmString(PSTR("stp en inv")); break;
@@ -91,13 +164,13 @@ static void report_util_setting_string(uint8_t n) {
 }
 */
 
-static void report_util_uint8_setting(uint8_t n, int val) { 
-  report_util_setting_prefix(n); 
-  print_uint8_base10(val); 
-  report_util_line_feed(); // report_util_setting_string(n); 
+static void report_util_uint8_setting(uint8_t n, int val) {
+  report_util_setting_prefix(n);
+  print_uint8_base10(val);
+  report_util_line_feed(); // report_util_setting_string(n);
 }
-static void report_util_float_setting(uint8_t n, float val, uint8_t n_decimal) { 
-  report_util_setting_prefix(n); 
+static void report_util_float_setting(uint8_t n, float val, uint8_t n_decimal) {
+  report_util_setting_prefix(n);
   printFloat(val,n_decimal);
   report_util_line_feed(); // report_util_setting_string(n);
 }
@@ -174,7 +247,7 @@ void report_init_message()
 
 // Grbl help message
 void report_grbl_help() {
-  printPgmString(PSTR("[HLP:$$ $# $G $I $N $x=val $Nx=line $J=line $SLP $C $X $H ~ ! ? ctrl-x]\r\n"));    
+  printPgmString(PSTR("[HLP:$$ $# $G $I $N $x=val $Nx=line $J=line $SLP $C $X $H ~ ! ? ctrl-x]\r\n"));
 }
 
 
@@ -298,8 +371,8 @@ void report_gcode_modes()
     switch (gc_state.modal.program_flow) {
       case PROGRAM_FLOW_PAUSED : serial_write('0'); break;
       // case PROGRAM_FLOW_OPTIONAL_STOP : serial_write('1'); break; // M1 is ignored and not supported.
-      case PROGRAM_FLOW_COMPLETED_M2 : 
-      case PROGRAM_FLOW_COMPLETED_M30 : 
+      case PROGRAM_FLOW_COMPLETED_M2 :
+      case PROGRAM_FLOW_COMPLETED_M30 :
         print_uint8_base10(gc_state.modal.program_flow);
         break;
     }
@@ -319,12 +392,12 @@ void report_gcode_modes()
   } else { serial_write('9'); }
 
   #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
-    if (sys.override_ctrl == OVERRIDE_PARKING_MOTION) { 
+    if (sys.override_ctrl == OVERRIDE_PARKING_MOTION) {
       report_util_gcode_modes_M();
       print_uint8_base10(56);
     }
   #endif
-  
+
   printPgmString(PSTR(" T"));
   print_uint8_base10(gc_state.tool);
 
@@ -358,14 +431,86 @@ void report_execute_startup_message(char *line, uint8_t status_code)
 // Prints build info line
 void report_build_info(char *line)
 {
+  #ifdef SORT_REPORT_BY_AXIS_NAME
+    char axis_name_order[] = AXIS_NAME_SORT_ORDER;
+  #endif
+
   printPgmString(PSTR("[VER:" GRBL_VERSION "." GRBL_VERSION_BUILD ":"));
   printString(line);
+  report_util_feedback_line_feed();
+  printPgmString(PSTR("[AXS:"));
+  print_uint8_base10(N_AXIS);
+  printPgmString(PSTR(":"));
+
+  // If this option is enabled, the sorting order will be X, Y, Z, U, V, W, A, B and C.
+  // defined by AXIS_NAME_SORT_ORDER
+  #ifdef SORT_REPORT_BY_AXIS_NAME
+    // Output axis_names in order of AXIS_NAME_SORT_ORDER et traiter REPORT_VALUE_FOR_AXIS_NAME_ONCE
+    for (int i=0; i<9; i++) {
+      if (AXIS_1_NAME == axis_name_order[i]) {
+        serial_write(AXIS_1_NAME);
+        #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+          axis_name_order[i] = '\0';
+        #endif
+      }
+      if (AXIS_2_NAME == axis_name_order[i]) {
+        serial_write(AXIS_2_NAME);
+        #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+          axis_name_order[i] = '\0';
+        #endif
+      }
+      if (AXIS_3_NAME == axis_name_order[i]) {
+        serial_write(AXIS_3_NAME);
+        #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+          axis_name_order[i] = '\0';
+        #endif
+      }
+      #if N_AXIS > 3
+        if (AXIS_4_NAME == axis_name_order[i]) {
+          serial_write(AXIS_4_NAME);
+          #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+            axis_name_order[i] = '\0';
+          #endif
+        }
+      #endif
+      #if N_AXIS > 4
+        if (AXIS_5_NAME == axis_name_order[i]) {
+          serial_write(AXIS_5_NAME);
+          #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+            axis_name_order[i] = '\0';
+          #endif
+        }
+      #endif
+      #if N_AXIS > 5
+        if (AXIS_6_NAME == axis_name_order[i]) {
+          serial_write(AXIS_6_NAME);
+          #ifdef REPORT_VALUE_FOR_AXIS_NAME_ONCE
+            axis_name_order[i] = '\0';
+          #endif
+        }
+      #endif
+    }
+  #else
+    // Output axis_names in order of axis number
+    serial_write(AXIS_1_NAME);
+    serial_write(AXIS_2_NAME);
+    serial_write(AXIS_3_NAME);
+    #if N_AXIS > 3
+      serial_write(AXIS_4_NAME);
+    #endif
+    #if N_AXIS > 4
+      serial_write(AXIS_5_NAME);
+    #endif
+    #if N_AXIS > 5
+      serial_write(AXIS_6_NAME);
+    #endif
+  #endif
   report_util_feedback_line_feed();
   printPgmString(PSTR("[OPT:")); // Generate compile-time build option list
   serial_write('V'); // Variable spindle standard.
   serial_write('N'); // Line number reporting standard.
   serial_write('M'); // M7 mist coolant standard.
-  serial_write('+'); // Safety door support standard.
+  serial_write('G'); // Safety door support standard.
   #ifdef COREXY
     serial_write('C');
   #endif
@@ -422,6 +567,8 @@ void report_build_info(char *line)
   print_uint8_base10(BLOCK_BUFFER_SIZE-1);
   serial_write(',');
   print_uint8_base10(RX_BUFFER_SIZE);
+  serial_write(',');
+  print_uint8_base10(settings.flags);
 
   report_util_feedback_line_feed();
 }
@@ -543,9 +690,18 @@ void report_realtime_status()
       printPgmString(PSTR("|Pn:"));
       if (prb_pin_state) { serial_write('P'); }
       if (lim_pin_state) {
-        if (bit_istrue(lim_pin_state,bit(X_AXIS))) { serial_write('X'); }
-        if (bit_istrue(lim_pin_state,bit(Y_AXIS))) { serial_write('Y'); }
-        if (bit_istrue(lim_pin_state,bit(Z_AXIS))) { serial_write('Z'); }
+        if (bit_istrue(lim_pin_state,bit(AXIS_1))) { serial_write(AXIS_1_NAME); }
+        if (bit_istrue(lim_pin_state,bit(AXIS_2))) { serial_write(AXIS_2_NAME); }
+        if (bit_istrue(lim_pin_state,bit(AXIS_3))) { serial_write(AXIS_3_NAME); }
+        #if N_AXIS > 3
+          if (bit_istrue(lim_pin_state,bit(AXIS_4))) { serial_write(AXIS_4_NAME); }
+        #endif
+        #if N_AXIS > 4
+          if (bit_istrue(lim_pin_state,bit(AXIS_5))) { serial_write(AXIS_5_NAME); }
+        #endif
+        #if N_AXIS > 5
+          if (bit_istrue(lim_pin_state,bit(AXIS_6))) { serial_write(AXIS_6_NAME); }
+        #endif
       }
       if (ctrl_pin_state) {
         if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_SAFETY_DOOR)) { serial_write('D'); }
@@ -554,6 +710,10 @@ void report_realtime_status()
         if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_CYCLE_START)) { serial_write('S'); }
       }
     }
+  #endif
+  #ifdef DEBUG
+    printPgmString(PSTR("|Dbg:"));
+    // Other debugs here...
   #endif
 
   #ifdef REPORT_FIELD_WORK_COORD_OFFSET
@@ -591,7 +751,7 @@ void report_realtime_status()
         }
         if (cl_state & COOLANT_STATE_FLOOD) { serial_write('F'); }
         if (cl_state & COOLANT_STATE_MIST) { serial_write('M'); }
-      }  
+      }
     }
   #endif
 
@@ -601,8 +761,16 @@ void report_realtime_status()
 
 
 #ifdef DEBUG
-  void report_realtime_debug()
+  void report_realtime_debug(char *line, uint8_t val)
   {
-
+    printPgmString(PSTR("{debug("));
+    printString(line);
+    printPgmString(PSTR("|val:"));
+    print_uint8_base10(val);
+    printPgmString(PSTR("|Amask:"));
+    print_uint8_base10(axis_A_mask);
+    // print realtime debug values here
+    printPgmString(PSTR(")}"));
+    report_util_line_feed();
   }
 #endif

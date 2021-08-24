@@ -2,6 +2,7 @@
   settings.c - eeprom configuration handling
   Part of Grbl
 
+  Copyright (c) 2017-2018 Gauthier Briere
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -23,7 +24,7 @@
 
 settings_t settings;
 
-const __flash settings_t defaults = {\
+const __flash settings_t defaults = {
     .pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS,
     .stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME,
     .step_invert_mask = DEFAULT_STEPPING_INVERT_MASK,
@@ -38,33 +39,51 @@ const __flash settings_t defaults = {\
     .homing_seek_rate = DEFAULT_HOMING_SEEK_RATE,
     .homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY,
     .homing_pulloff = DEFAULT_HOMING_PULLOFF,
-    .flags = (DEFAULT_REPORT_INCHES << BIT_REPORT_INCHES) | \
-             (DEFAULT_LASER_MODE << BIT_LASER_MODE) | \
-             (DEFAULT_INVERT_ST_ENABLE << BIT_INVERT_ST_ENABLE) | \
-             (DEFAULT_HARD_LIMIT_ENABLE << BIT_HARD_LIMIT_ENABLE) | \
-             (DEFAULT_HOMING_ENABLE << BIT_HOMING_ENABLE) | \
-             (DEFAULT_SOFT_LIMIT_ENABLE << BIT_SOFT_LIMIT_ENABLE) | \
-             (DEFAULT_INVERT_LIMIT_PINS << BIT_INVERT_LIMIT_PINS) | \
+    .flags = (DEFAULT_REPORT_INCHES << BIT_REPORT_INCHES) |
+             (DEFAULT_LASER_MODE << BIT_LASER_MODE) |
+             (DEFAULT_INVERT_ST_ENABLE << BIT_INVERT_ST_ENABLE) |
+             (DEFAULT_HARD_LIMIT_ENABLE << BIT_HARD_LIMIT_ENABLE) |
+             (DEFAULT_HOMING_ENABLE << BIT_HOMING_ENABLE) |
+             (DEFAULT_SOFT_LIMIT_ENABLE << BIT_SOFT_LIMIT_ENABLE) |
+             (DEFAULT_INVERT_LIMIT_PINS << BIT_INVERT_LIMIT_PINS) |
              (DEFAULT_INVERT_PROBE_PIN << BIT_INVERT_PROBE_PIN),
-    .steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM,
-    .steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM,
-    .steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM,
-    .max_rate[X_AXIS] = DEFAULT_X_MAX_RATE,
-    .max_rate[Y_AXIS] = DEFAULT_Y_MAX_RATE,
-    .max_rate[Z_AXIS] = DEFAULT_Z_MAX_RATE,
-    .acceleration[X_AXIS] = DEFAULT_X_ACCELERATION,
-    .acceleration[Y_AXIS] = DEFAULT_Y_ACCELERATION,
-    .acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION,
-    .max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL),
-    .max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL),
-    .max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL)};
-
+    .steps_per_mm[AXIS_1] = DEFAULT_AXIS1_STEPS_PER_UNIT,
+    .steps_per_mm[AXIS_2] = DEFAULT_AXIS2_STEPS_PER_UNIT,
+    .steps_per_mm[AXIS_3] = DEFAULT_AXIS3_STEPS_PER_UNIT,
+    .max_rate[AXIS_1] = DEFAULT_AXIS1_MAX_RATE,
+    .max_rate[AXIS_2] = DEFAULT_AXIS2_MAX_RATE,
+    .max_rate[AXIS_3] = DEFAULT_AXIS3_MAX_RATE,
+    .acceleration[AXIS_1] = DEFAULT_AXIS1_ACCELERATION,
+    .acceleration[AXIS_2] = DEFAULT_AXIS2_ACCELERATION,
+    .acceleration[AXIS_3] = DEFAULT_AXIS3_ACCELERATION,
+    .max_travel[AXIS_1] = (-DEFAULT_AXIS1_MAX_TRAVEL),
+    .max_travel[AXIS_2] = (-DEFAULT_AXIS2_MAX_TRAVEL),
+    .max_travel[AXIS_3] = (-DEFAULT_AXIS3_MAX_TRAVEL),
+#if N_AXIS > 3
+    .steps_per_mm[AXIS_4] = DEFAULT_AXIS4_STEPS_PER_UNIT,
+    .max_rate[AXIS_4] = DEFAULT_AXIS4_MAX_RATE,
+    .acceleration[AXIS_4] = DEFAULT_AXIS4_ACCELERATION,
+    .max_travel[AXIS_4] = (-DEFAULT_AXIS4_MAX_TRAVEL),
+#endif
+#if N_AXIS > 4
+    .steps_per_mm[AXIS_5] = DEFAULT_AXIS5_STEPS_PER_UNIT,
+    .max_rate[AXIS_5] = DEFAULT_AXIS5_MAX_RATE,
+    .acceleration[AXIS_5] = DEFAULT_AXIS5_ACCELERATION,
+    .max_travel[AXIS_5] = (-DEFAULT_AXIS5_MAX_TRAVEL),
+#endif
+#if N_AXIS > 5
+    .steps_per_mm[AXIS_6] = DEFAULT_AXIS6_STEPS_PER_UNIT,
+    .max_rate[AXIS_6] = DEFAULT_AXIS6_MAX_RATE,
+    .acceleration[AXIS_6] = DEFAULT_AXIS6_ACCELERATION,
+    .max_travel[AXIS_6] = (-DEFAULT_AXIS6_MAX_TRAVEL),
+#endif
+};
 
 // Method to store startup lines into EEPROM
 void settings_store_startup_line(uint8_t n, char *line)
 {
   #ifdef FORCE_BUFFER_SYNC_DURING_EEPROM_WRITE
-    protocol_buffer_synchronize(); // A startup line may contain a motion and be executing. 
+    protocol_buffer_synchronize(); // A startup line may contain a motion and be executing.
   #endif
   uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
   memcpy_to_eeprom_with_checksum(addr,(char*)line, LINE_BUFFER_SIZE);
@@ -312,55 +331,70 @@ void settings_init() {
 // Returns step pin mask according to Grbl internal axis indexing.
 uint8_t get_step_pin_mask(uint8_t axis_idx)
 {
-  #ifdef DEFAULTS_RAMPS_BOARD
-    if ( axis_idx == X_AXIS ) { return((1<<STEP_BIT(X_AXIS))); }
-    if ( axis_idx == Y_AXIS ) { return((1<<STEP_BIT(Y_AXIS))); }
-    return((1<<STEP_BIT(Z_AXIS)));
-  #else
-    if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
-    if ( axis_idx == Y_AXIS ) { return((1<<Y_STEP_BIT)); }
-    return((1<<Z_STEP_BIT));
-  #endif // DEFAULTS_RAMPS_BOARD
+  if ( axis_idx == AXIS_1 ) { return((1<<STEP_BIT(AXIS_1))); }
+  if ( axis_idx == AXIS_2 ) { return((1<<STEP_BIT(AXIS_2))); }
+  #if N_AXIS > 3
+    if ( axis_idx == AXIS_4 ) { return((1<<STEP_BIT(AXIS_4))); }
+  #endif
+  #if N_AXIS > 4
+    if ( axis_idx == AXIS_5 ) { return((1<<STEP_BIT(AXIS_5))); }
+  #endif
+  #if N_AXIS > 5
+    if ( axis_idx == AXIS_6 ) { return((1<<STEP_BIT(AXIS_6))); }
+  #endif
+  return((1<<STEP_BIT(AXIS_3)));
 }
 
 
 // Returns direction pin mask according to Grbl internal axis indexing.
 uint8_t get_direction_pin_mask(uint8_t axis_idx)
 {
-  #ifdef DEFAULTS_RAMPS_BOARD
-    if ( axis_idx == X_AXIS ) { return((1<<DIRECTION_BIT(X_AXIS))); }
-    if ( axis_idx == Y_AXIS ) { return((1<<DIRECTION_BIT(Y_AXIS))); }
-    return((1<<DIRECTION_BIT(Z_AXIS)));
-  #else
-    if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
-    if ( axis_idx == Y_AXIS ) { return((1<<Y_DIRECTION_BIT)); }
-    return((1<<Z_DIRECTION_BIT));
-  #endif // DEFAULTS_RAMPS_BOARD
+  if ( axis_idx == AXIS_1 ) { return((1<<DIRECTION_BIT(AXIS_1))); }
+  if ( axis_idx == AXIS_2 ) { return((1<<DIRECTION_BIT(AXIS_2))); }
+  #if N_AXIS > 3
+    if ( axis_idx == AXIS_4 ) { return((1<<DIRECTION_BIT(AXIS_4))); }
+  #endif
+  #if N_AXIS > 4
+    if ( axis_idx == AXIS_5 ) { return((1<<DIRECTION_BIT(AXIS_5))); }
+  #endif
+  #if N_AXIS > 5
+    if ( axis_idx == AXIS_6 ) { return((1<<DIRECTION_BIT(AXIS_6))); }
+  #endif
+  return((1<<DIRECTION_BIT(AXIS_3)));
 }
 
 
 // Returns limit pin mask according to Grbl internal axis indexing.
 
-#ifdef DEFAULTS_RAMPS_BOARD
-  uint8_t get_min_limit_pin_mask(uint8_t axis_idx)
-  {
-    if ( axis_idx == X_AXIS ) { return((1<<MIN_LIMIT_BIT(X_AXIS))); }
-    if ( axis_idx == Y_AXIS ) { return((1<<MIN_LIMIT_BIT(Y_AXIS))); }
-    return((1<<MIN_LIMIT_BIT(Z_AXIS)));
-  }
+uint8_t get_min_limit_pin_mask(uint8_t axis_idx)
+{
+  if ( axis_idx == AXIS_1 ) { return((1<<MIN_LIMIT_BIT(AXIS_1))); }
+  if ( axis_idx == AXIS_2 ) { return((1<<MIN_LIMIT_BIT(AXIS_2))); }
+  #if N_AXIS > 3
+    if ( axis_idx == AXIS_4 ) { return((1<<MIN_LIMIT_BIT(AXIS_4))); }
+  #endif
+  #if N_AXIS > 4
+    if ( axis_idx == AXIS_5 ) { return((1<<MIN_LIMIT_BIT(AXIS_5))); }
+  #endif
+  #if N_AXIS > 5
+    if ( axis_idx == AXIS_6 ) { return((1<<MIN_LIMIT_BIT(AXIS_6))); }
+  #endif
+  return((1<<MIN_LIMIT_BIT(AXIS_3)));
+}
 
-   uint8_t get_max_limit_pin_mask(uint8_t axis_idx)
-   {
-     if ( axis_idx == X_AXIS ) { return((1<<MAX_LIMIT_BIT(X_AXIS))); }
-     if ( axis_idx == Y_AXIS ) { return((1<<MAX_LIMIT_BIT(Y_AXIS))); }
-     return((1<<MAX_LIMIT_BIT(Z_AXIS)));
-  }
-#else
-  uint8_t get_limit_pin_mask(uint8_t axis_idx)
-  {
-    if ( axis_idx == X_AXIS ) { return((1<<X_LIMIT_BIT)); }
-    if ( axis_idx == Y_AXIS ) { return((1<<Y_LIMIT_BIT)); }
-    return((1<<Z_LIMIT_BIT));
-  }
-#endif //DEFAULTS_RAMPS_BOARD
+uint8_t get_max_limit_pin_mask(uint8_t axis_idx)
+{
+  if ( axis_idx == AXIS_1 ) { return((1<<MAX_LIMIT_BIT(AXIS_1))); }
+  if ( axis_idx == AXIS_2 ) { return((1<<MAX_LIMIT_BIT(AXIS_2))); }
+  #if N_AXIS > 3
+    if ( axis_idx == AXIS_4 ) { return((1<<MAX_LIMIT_BIT(AXIS_4))); }
+  #endif
+  #if N_AXIS > 4
+    if ( axis_idx == AXIS_5 ) { return((1<<MAX_LIMIT_BIT(AXIS_5))); }
+  #endif
+  #if N_AXIS > 5
+    if ( axis_idx == AXIS_6 ) { return((1<<MAX_LIMIT_BIT(AXIS_6))); }
+  #endif
+  return((1<<MAX_LIMIT_BIT(AXIS_3)));
+}
 

@@ -2,6 +2,7 @@
   planner.c - buffers movement commands and manages the acceleration profile plan
   Part of Grbl
 
+  Copyright (c) 2017-2018 Gauthier Briere
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011 Jens Geisler
@@ -327,21 +328,30 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
   uint8_t idx;
 
   // Copy position data based on type of motion being planned.
-  if (block->condition & PL_COND_FLAG_SYSTEM_MOTION) { 
+  if (block->condition & PL_COND_FLAG_SYSTEM_MOTION) {
     #ifdef COREXY
-      position_steps[X_AXIS] = system_convert_corexy_to_x_axis_steps(sys_position);
-      position_steps[Y_AXIS] = system_convert_corexy_to_y_axis_steps(sys_position);
-      position_steps[Z_AXIS] = sys_position[Z_AXIS];
+      position_steps[AXIS_1] = system_convert_corexy_to_x_axis_steps(sys_position);
+      position_steps[AXIS_2] = system_convert_corexy_to_y_axis_steps(sys_position);
+      position_steps[AXIS_3] = sys_position[AXIS_3];
+      #if N_AXIS > 3
+        position_steps[AXIS_4] = sys_position[AXIS_4];
+      #endif
+      #if N_AXIS > 4
+        position_steps[AXIS_5] = sys_position[AXIS_5];
+      #endif
+      #if N_AXIS > 5
+        position_steps[AXIS_6] = sys_position[AXIS_6];
+      #endif
     #else
-      memcpy(position_steps, sys_position, sizeof(sys_position)); 
+      memcpy(position_steps, sys_position, sizeof(sys_position));
     #endif
   } else { memcpy(position_steps, pl.position, sizeof(pl.position)); }
 
   #ifdef COREXY
     target_steps[A_MOTOR] = lround(target[A_MOTOR]*settings.steps_per_mm[A_MOTOR]);
     target_steps[B_MOTOR] = lround(target[B_MOTOR]*settings.steps_per_mm[B_MOTOR]);
-    block->steps[A_MOTOR] = labs((target_steps[X_AXIS]-position_steps[X_AXIS]) + (target_steps[Y_AXIS]-position_steps[Y_AXIS]));
-    block->steps[B_MOTOR] = labs((target_steps[X_AXIS]-position_steps[X_AXIS]) - (target_steps[Y_AXIS]-position_steps[Y_AXIS]));
+    block->steps[A_MOTOR] = labs((target_steps[AXIS_1]-position_steps[AXIS_1]) + (target_steps[AXIS_2]-position_steps[AXIS_2]));
+    block->steps[B_MOTOR] = labs((target_steps[AXIS_1]-position_steps[AXIS_1]) - (target_steps[AXIS_2]-position_steps[AXIS_2]));
   #endif
 
   for (idx=0; idx<N_AXIS; idx++) {
@@ -355,9 +365,9 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
       }
       block->step_event_count = max(block->step_event_count, block->steps[idx]);
       if (idx == A_MOTOR) {
-        delta_mm = (target_steps[X_AXIS]-position_steps[X_AXIS] + target_steps[Y_AXIS]-position_steps[Y_AXIS])/settings.steps_per_mm[idx];
+        delta_mm = (target_steps[AXIS_1]-position_steps[AXIS_1] + target_steps[AXIS_2]-position_steps[AXIS_2])/settings.steps_per_mm[idx];
       } else if (idx == B_MOTOR) {
-        delta_mm = (target_steps[X_AXIS]-position_steps[X_AXIS] - target_steps[Y_AXIS]+position_steps[Y_AXIS])/settings.steps_per_mm[idx];
+        delta_mm = (target_steps[AXIS_1]-position_steps[AXIS_1] - target_steps[AXIS_2]+position_steps[AXIS_2])/settings.steps_per_mm[idx];
       } else {
         delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_mm[idx];
       }
@@ -366,15 +376,11 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
       block->steps[idx] = labs(target_steps[idx]-position_steps[idx]);
       block->step_event_count = max(block->step_event_count, block->steps[idx]);
       delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_mm[idx];
-	  #endif
+    #endif
     unit_vec[idx] = delta_mm; // Store unit vector numerator
 
     // Set direction bits. Bit enabled always means direction is negative.
-    #ifdef DEFAULTS_RAMPS_BOARD
-      if (delta_mm < 0.0 ) { block->direction_bits[idx] |= get_direction_pin_mask(idx); }
-    #else
-      if (delta_mm < 0.0 ) { block->direction_bits |= get_direction_pin_mask(idx); }
-    #endif // DEFAULTS_RAMPS_BOARD
+    if (delta_mm < 0.0 ) { block->direction_bits[idx] |= get_direction_pin_mask(idx); }
   }
 
   // Bail if this is a zero-length block. Highly unlikely to occur.
@@ -390,7 +396,7 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
 
   // Store programmed rate.
   if (block->condition & PL_COND_FLAG_RAPID_MOTION) { block->programmed_rate = block->rapid_rate; }
-  else { 
+  else {
     block->programmed_rate = pl_data->feed_rate;
     if (block->condition & PL_COND_FLAG_INVERSE_TIME) { block->programmed_rate *= block->millimeters; }
   }
@@ -480,10 +486,10 @@ void plan_sync_position()
   uint8_t idx;
   for (idx=0; idx<N_AXIS; idx++) {
     #ifdef COREXY
-      if (idx==X_AXIS) {
-        pl.position[X_AXIS] = system_convert_corexy_to_x_axis_steps(sys_position);
-      } else if (idx==Y_AXIS) {
-        pl.position[Y_AXIS] = system_convert_corexy_to_y_axis_steps(sys_position);
+      if (idx==AXIS_1) {
+        pl.position[AXIS_1] = system_convert_corexy_to_x_axis_steps(sys_position);
+      } else if (idx==AXIS_2) {
+        pl.position[AXIS_2] = system_convert_corexy_to_y_axis_steps(sys_position);
       } else {
         pl.position[idx] = sys_position[idx];
       }

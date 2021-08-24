@@ -38,15 +38,16 @@
 #define EXEC_SLEEP          bit(7) // bitmask 10000000
 
 // Alarm executor codes. Valid values (1-255). Zero is reserved.
-#define EXEC_ALARM_HARD_LIMIT           1
-#define EXEC_ALARM_SOFT_LIMIT           2
-#define EXEC_ALARM_ABORT_CYCLE          3
-#define EXEC_ALARM_PROBE_FAIL_INITIAL   4
-#define EXEC_ALARM_PROBE_FAIL_CONTACT   5
-#define EXEC_ALARM_HOMING_FAIL_RESET    6
-#define EXEC_ALARM_HOMING_FAIL_DOOR     7
-#define EXEC_ALARM_HOMING_FAIL_PULLOFF  8
-#define EXEC_ALARM_HOMING_FAIL_APPROACH 9
+#define EXEC_ALARM_HARD_LIMIT            1
+#define EXEC_ALARM_SOFT_LIMIT            2
+#define EXEC_ALARM_ABORT_CYCLE           3
+#define EXEC_ALARM_PROBE_FAIL_INITIAL    4
+#define EXEC_ALARM_PROBE_FAIL_CONTACT    5
+#define EXEC_ALARM_HOMING_FAIL_RESET     6
+#define EXEC_ALARM_HOMING_FAIL_DOOR      7
+#define EXEC_ALARM_HOMING_FAIL_PULLOFF   8
+#define EXEC_ALARM_HOMING_FAIL_APPROACH  9
+#define EXEC_ALARM_HOMING_FAIL_TRAVEL   10
 
 // Override bit maps. Realtime bitflags to control feed, rapid, spindle, and coolant overrides.
 // Spindle/coolant and feed/rapids are separated into two controlling flag variables.
@@ -118,16 +119,12 @@
 // Define global system variables
 typedef struct {
   uint8_t state;               // Tracks the current system state of Grbl.
-  uint8_t abort;               // System abort flag. Forces exit back to main loop for reset.             
+  uint8_t abort;               // System abort flag. Forces exit back to main loop for reset.
   uint8_t suspend;             // System suspend bitflag variable that manages holds, cancels, and safety door.
   uint8_t soft_limit;          // Tracks soft limit errors for the state machine. (boolean)
   uint8_t step_control;        // Governs the step segment generator depending on system state.
   uint8_t probe_succeeded;     // Tracks if last probing cycle was successful.
-  #ifdef DEFAULTS_RAMPS_BOARD
-    uint8_t homing_axis_lock[N_AXIS];    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
-  #else
-    uint8_t homing_axis_lock;    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
-  #endif
+  uint8_t homing_axis_lock[N_AXIS];    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
   uint8_t f_override;          // Feed rate override value in percent
   uint8_t r_override;          // Rapids override value in percent
   uint8_t spindle_speed_ovr;   // Spindle speed value in percent
@@ -150,7 +147,19 @@ extern volatile uint8_t sys_rt_exec_state;   // Global realtime executor bitflag
 extern volatile uint8_t sys_rt_exec_alarm;   // Global realtime executor bitflag variable for setting various alarms.
 extern volatile uint8_t sys_rt_exec_motion_override; // Global realtime executor bitflag variable for motion-based overrides.
 extern volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bitflag variable for spindle/coolant overrides.
-
+extern uint8_t axis_X_mask; // Global mask for axis X bits
+extern uint8_t axis_Y_mask; // Global mask for axis Y bits
+extern uint8_t axis_Z_mask; // Global mask for axis Z bits
+extern uint8_t axis_A_mask; // Global mask for axis A bits
+extern uint8_t axis_B_mask; // Global mask for axis B bits
+extern uint8_t axis_C_mask; // Global mask for axis C bits
+extern uint8_t axis_U_mask; // Global mask for axis A bits
+extern uint8_t axis_V_mask; // Global mask for axis B bits
+extern uint8_t axis_W_mask; // Global mask for axis C bits
+extern uint8_t axis_D_mask; // Global mask for axis A bits
+extern uint8_t axis_E_mask; // Global mask for axis B bits
+extern uint8_t axis_H_mask; // Global mask for axis C bits
+extern unsigned char axis_name[N_AXIS]; // Global table of axis names
 #ifdef DEBUG
   #define EXEC_DEBUG_REPORT  bit(0)
   extern volatile uint8_t sys_rt_exec_debug;

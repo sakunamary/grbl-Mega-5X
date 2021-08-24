@@ -2,6 +2,7 @@
   gcode.h - rs274/ngc parser.
   Part of Grbl
 
+  Copyright (c) 2017-2018 Gauthier Briere
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
@@ -48,9 +49,9 @@
 
 // Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
 // internally by the parser to know which command to execute.
-// NOTE: Some macro values are assigned specific values to make g-code state reporting and parsing 
+// NOTE: Some macro values are assigned specific values to make g-code state reporting and parsing
 // compile a litte smaller. Necessary due to being completely out of flash on the 328p. Although not
-// ideal, just be careful with values that state 'do not alter' and check both report.c and gcode.c 
+// ideal, just be careful with values that state 'do not alter' and check both report.c and gcode.c
 // to see how they are used, if you need to alter them.
 
 // Modal Group G0: Non-modal actions
@@ -136,19 +137,26 @@
 // N/A: Stores coordinate system value (54-59) to change to.
 
 // Define parameter word mapping.
-#define WORD_F  0
-#define WORD_I  1
-#define WORD_J  2
-#define WORD_K  3
-#define WORD_L  4
-#define WORD_N  5
-#define WORD_P  6
-#define WORD_R  7
-#define WORD_S  8
-#define WORD_T  9
-#define WORD_X  10
-#define WORD_Y  11
-#define WORD_Z  12
+// Updated to 32 bits tou support more than 16 values... Needed for new axis U, V & W
+#define DWORD_F  0
+#define DWORD_I  1
+#define DWORD_J  2
+#define DWORD_K  3
+#define DWORD_L  4
+#define DWORD_N  5
+#define DWORD_P  6
+#define DWORD_R  7
+#define DWORD_S  8
+#define DWORD_T  9
+#define DWORD_X 10
+#define DWORD_Y 11
+#define DWORD_Z 12
+#define DWORD_A 13
+#define DWORD_B 14
+#define DWORD_C 15
+#define DWORD_U 16
+#define DWORD_V 17
+#define DWORD_W 18
 
 // Define g-code parser position updating flags
 #define GC_UPDATE_POS_TARGET   0 // Must be zero
@@ -161,7 +169,7 @@
 #define GC_PROBE_FAIL_INIT  GC_UPDATE_POS_NONE
 #define GC_PROBE_FAIL_END   GC_UPDATE_POS_TARGET
 #ifdef SET_CHECK_MODE_PROBE_TO_START
-  #define GC_PROBE_CHECK_MODE   GC_UPDATE_POS_NONE  
+  #define GC_PROBE_CHECK_MODE   GC_UPDATE_POS_NONE
 #else
   #define GC_PROBE_CHECK_MODE   GC_UPDATE_POS_TARGET
 #endif
@@ -198,7 +206,11 @@ typedef struct {
 
 typedef struct {
   float f;         // Feed
+#if N_AXIS > 3
+  float ijk[N_AXIS];    // axes offsets for XYZ & AB(C)
+#else
   float ijk[3];    // I,J,K Axis arc offsets
+#endif
   uint8_t l;       // G10 or canned cycles parameters
   int32_t n;       // Line number
   float p;         // G10 or dwell parameters
@@ -206,7 +218,11 @@ typedef struct {
   float r;         // Arc radius
   float s;         // Spindle speed
   uint8_t t;       // Tool selection
+#if N_AXIS > 3
+  float xyz[N_AXIS];    // X,Y,Z Translational axes & A,B,(C)
+#else
   float xyz[3];    // X,Y,Z Translational axes
+#endif
 } gc_values_t;
 
 

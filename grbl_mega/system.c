@@ -2,6 +2,7 @@
   system.c - Handles system level commands and real-time processes
   Part of Grbl
 
+  Copyright (c) 2017-2018 Gauthier Briere
   Copyright (c) 2014-2016 Sungeun K. Jeon for Gnea Research LLC
 
   Grbl is free software: you can redistribute it and/or modify
@@ -67,10 +68,10 @@ ISR(CONTROL_INT_vect)
     } else if (bit_istrue(pin,CONTROL_PIN_INDEX_CYCLE_START)) {
       bit_true(sys_rt_exec_state, EXEC_CYCLE_START);
     } else if (bit_istrue(pin,CONTROL_PIN_INDEX_FEED_HOLD)) {
-      bit_true(sys_rt_exec_state, EXEC_FEED_HOLD); 
+      bit_true(sys_rt_exec_state, EXEC_FEED_HOLD);
     } else if (bit_istrue(pin,CONTROL_PIN_INDEX_SAFETY_DOOR)) {
       bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
-    } 
+    }
   }
 }
 
@@ -173,12 +174,75 @@ uint8_t system_execute_line(char *line)
           #ifdef HOMING_SINGLE_AXIS_COMMANDS
             } else if (line[3] == 0) {
               switch (line[2]) {
-                case 'X': mc_homing_cycle(HOMING_CYCLE_X); break;
-                case 'Y': mc_homing_cycle(HOMING_CYCLE_Y); break;
-                case 'Z': mc_homing_cycle(HOMING_CYCLE_Z); break;
+                case 'X': mc_homing_cycle(axis_X_mask); break;
+                case 'Y': mc_homing_cycle(axis_Y_mask); break;
+                case 'Z': mc_homing_cycle(axis_Z_mask); break;
+                case 'A':
+                  if (axis_A_mask != 0) {
+                    mc_homing_cycle(axis_A_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
+                case 'B':
+                  if (axis_B_mask != 0) {
+                    mc_homing_cycle(axis_B_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
+                case 'C':
+                  if (axis_C_mask != 0) {
+                    mc_homing_cycle(axis_C_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
+                case 'U':
+                  if (axis_U_mask != 0) {
+                    mc_homing_cycle(axis_U_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
+                case 'V':
+                  if (axis_V_mask != 0) {
+                    mc_homing_cycle(axis_V_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
+                case 'W':
+                  if (axis_W_mask != 0) {
+                    mc_homing_cycle(axis_W_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
+                case 'D':
+                  if (axis_D_mask != 0) {
+                    mc_homing_cycle(axis_D_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
+                case 'E':
+                  if (axis_E_mask != 0) {
+                    mc_homing_cycle(axis_E_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
+                case 'H':
+                  if (axis_H_mask != 0) {
+                    mc_homing_cycle(axis_H_mask);
+                  } else {
+                    return(STATUS_INVALID_STATEMENT);
+                  }
+                  break;
                 default: return(STATUS_INVALID_STATEMENT);
               }
-          #endif
+          #endif // HOMING_SINGLE_AXIS_COMMANDS
           } else { return(STATUS_INVALID_STATEMENT); }
           if (!sys.abort) {  // Execute startup scripts after successful homing.
             sys.state = STATE_IDLE; // Set to IDLE when complete.
@@ -282,9 +346,9 @@ float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx)
 {
   float pos;
   #ifdef COREXY
-    if (idx==X_AXIS) {
+    if (idx==AXIS_1) {
       pos = (float)system_convert_corexy_to_x_axis_steps(steps) / settings.steps_per_mm[idx];
-    } else if (idx==Y_AXIS) {
+    } else if (idx==AXIS_2) {
       pos = (float)system_convert_corexy_to_y_axis_steps(steps) / settings.steps_per_mm[idx];
     } else {
       pos = steps[idx]/settings.steps_per_mm[idx];
@@ -324,18 +388,21 @@ uint8_t system_check_travel_limits(float *target)
 {
   uint8_t idx;
   for (idx=0; idx<N_AXIS; idx++) {
-    #ifdef HOMING_FORCE_SET_ORIGIN
-      // When homing forced set origin is enabled, soft limits checks need to account for directionality.
-      // NOTE: max_travel is stored as negative
-      if (bit_istrue(settings.homing_dir_mask,bit(idx))) {
-        if (target[idx] < 0 || target[idx] > -settings.max_travel[idx]) { return(true); }
-      } else {
+    // Ignore soft limit if AXIS_MAX_TRAVEL == 0 (parameter $130 to $135)
+    if (settings.max_travel[idx] != 0) {
+      #ifdef HOMING_FORCE_SET_ORIGIN
+        // When homing forced set origin is enabled, soft limits checks need to account for directionality.
+        // NOTE: max_travel is stored as negative
+        if (bit_istrue(settings.homing_dir_mask,bit(idx))) {
+          if (target[idx] < 0 || target[idx] > -settings.max_travel[idx]) { return(true); }
+        } else {
+          if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) { return(true); }
+        }
+      #else
+        // NOTE: max_travel is stored as negative
         if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) { return(true); }
-      }
-    #else
-      // NOTE: max_travel is stored as negative
-      if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) { return(true); }
-    #endif
+      #endif
+    }
   }
   return(false);
 }
